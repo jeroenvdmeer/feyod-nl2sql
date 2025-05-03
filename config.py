@@ -9,12 +9,12 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Database Configuration
-# Use DATABASE_URL for flexibility (e.g., "sqlite+aiosqlite:///path/to/db.sqlite")
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    logger.warning("DATABASE_URL environment variable not set.")
+# Use FEYOD_DATABASE_URL for flexibility (e.g., "sqlite+aiosqlite:///path/to/db.sqlite")
+FEYOD_DATABASE_URL = os.getenv("FEYOD_DATABASE_URL")
+if not FEYOD_DATABASE_URL:
+    logger.warning("FEYOD_DATABASE_URL environment variable not set.")
     # Provide a default or raise an error if critical
-    # DATABASE_URL = "sqlite+aiosqlite:///./default.db" # Example default
+    # FEYOD_DATABASE_URL = "sqlite+aiosqlite:///./default.db" # Example default
 
 # LLM Configuration
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower() # Default to openai

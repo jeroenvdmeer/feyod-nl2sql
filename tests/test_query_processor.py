@@ -67,7 +67,7 @@ async def test_check_sql_syntax_valid(mock_connect):
     mock_connect.return_value = mock_conn # Mock the context manager entry
 
     # Mock config to provide a valid path
-    with patch('common.config.DATABASE_URL', 'sqlite+aiosqlite:///./dummy.db'):
+    with patch('common.config.FEYOD_DATABASE_URL', 'sqlite+aiosqlite:///./dummy.db'):
         is_valid, error = await query_processor.check_sql_syntax("SELECT * FROM test_table")
 
     assert is_valid is True
@@ -84,7 +84,7 @@ async def test_check_sql_syntax_invalid(mock_connect):
     mock_conn.execute = AsyncMock(side_effect=aiosqlite.Error("Syntax Error near blah"))
     mock_connect.return_value = mock_conn
 
-    with patch('common.config.DATABASE_URL', 'sqlite+aiosqlite:///./dummy.db'):
+    with patch('common.config.FEYOD_DATABASE_URL', 'sqlite+aiosqlite:///./dummy.db'):
         is_valid, error = await query_processor.check_sql_syntax("SELECT FROM test_table")
 
     assert is_valid is False
@@ -94,8 +94,8 @@ async def test_check_sql_syntax_invalid(mock_connect):
 
 @pytest.mark.asyncio
 async def test_check_sql_syntax_bad_db_url():
-     with patch('common.config.DATABASE_URL', 'not_a_sqlite_url'):
-          with pytest.raises(ValueError, match="DATABASE_URL format not suitable"):
+     with patch('common.config.FEYOD_DATABASE_URL', 'not_a_sqlite_url'):
+          with pytest.raises(ValueError, match="FEYOD_DATABASE_URL format not suitable"):
                await query_processor.check_sql_syntax("SELECT * FROM test_table")
 
 

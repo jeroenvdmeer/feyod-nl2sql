@@ -5,7 +5,7 @@ import os
 
 # Set env var before importing config and database
 # In a real scenario, use pytest-dotenv or fixtures to manage this
-os.environ['DATABASE_URL'] = 'sqlite+aiosqlite:///./test_db.sqlite'
+os.environ['FEYOD_DATABASE_URL'] = 'sqlite+aiosqlite:///./test_db.sqlite'
 
 # Now import the modules under test
 from .. import database
@@ -15,7 +15,7 @@ from .. import config
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_db():
     yield
-    db_path = config.DATABASE_URL[len('sqlite+aiosqlite:///'):]
+    db_path = config.FEYOD_DATABASE_URL[len('sqlite+aiosqlite:///'):]
     if os.path.exists(db_path):
         os.remove(db_path)
 

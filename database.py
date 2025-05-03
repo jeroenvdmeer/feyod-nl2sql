@@ -18,12 +18,12 @@ def get_engine():
     """Initializes and returns the SQLAlchemy async engine."""
     global _engine
     if _engine is None:
-        if not config.DATABASE_URL:
-            logger.error("DATABASE_URL is not configured. Cannot create database engine.")
+        if not config.FEYOD_DATABASE_URL:
+            logger.error("FEYOD_DATABASE_URL is not configured. Cannot create database engine.")
             raise ValueError("Database URL is not configured.")
         try:
-            logger.info(f"Creating async SQLAlchemy engine for URL: {config.DATABASE_URL}")
-            _engine = create_async_engine(config.DATABASE_URL)
+            logger.info(f"Creating async SQLAlchemy engine for URL: {config.FEYOD_DATABASE_URL}")
+            _engine = create_async_engine(config.FEYOD_DATABASE_URL)
         except Exception as e:
             logger.exception(f"Failed to create SQLAlchemy engine: {e}")
             raise
@@ -141,9 +141,9 @@ async def execute_query(sql: str, params: Optional[Dict | tuple] = None) -> List
 # Example usage (for testing purposes) - Requires running in an async context
 async def _test_main():
     logging.basicConfig(level=logging.INFO)
-    # Set DATABASE_URL environment variable before running for this test
-    if not config.DATABASE_URL:
-        print("Please set the DATABASE_URL environment variable to run the test.")
+    # Set FEYOD_DATABASE_URL environment variable before running for this test
+    if not config.FEYOD_DATABASE_URL:
+        print("Please set the FEYOD_DATABASE_URL environment variable to run the test.")
         return
 
     print("Testing database connection...")
@@ -179,6 +179,6 @@ if __name__ == "__main__":
     import asyncio
     # Note: Running this directly might require setting env vars beforehand
     # or modifying config loading for testing.
-    print("Running database test function. Ensure DATABASE_URL is set in your environment.")
+    print("Running database test function. Ensure FEYOD_DATABASE_URL is set in your environment.")
     asyncio.run(_test_main())
 

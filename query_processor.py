@@ -167,10 +167,10 @@ async def check_sql_syntax(sql_query: str) -> Tuple[bool, Optional[str]]:
     Returns (True, None) on success, (False, error_message) on failure.
     Uses a direct aiosqlite connection for this specific check, as it's simple
     and avoids potential complexities of checking via SQLAlchemy engine for just EXPLAIN.
-    Requires DATABASE_URL to be a file path for aiosqlite.
-    If DATABASE_URL is not a file path, this needs adjustment or use SQLAlchemy execute.
+    Requires FEYOD_DATABASE_URL to be a file path for aiosqlite.
+    If FEYOD_DATABASE_URL is not a file path, this needs adjustment or use SQLAlchemy execute.
     """
-    # Alternative: Use SQLAlchemy connection if DATABASE_URL isn't a direct file path
+    # Alternative: Use SQLAlchemy connection if FEYOD_DATABASE_URL isn't a direct file path
     # conn = None
     # try:
     #     conn = await database.get_db_connection()
@@ -184,16 +184,16 @@ async def check_sql_syntax(sql_query: str) -> Tuple[bool, Optional[str]]:
     # finally:
     #     await database.close_db_connection(conn)
 
-    # --- Using direct aiosqlite (assuming file path in DATABASE_URL) ---
+    # --- Using direct aiosqlite (assuming file path in FEYOD_DATABASE_URL) ---
     conn = None
-    db_path = database.config.DATABASE_URL
+    db_path = database.config.FEYOD_DATABASE_URL
     if not db_path or not db_path.startswith("sqlite+aiosqlite:///"):
-        logger.error("Cannot perform direct aiosqlite syntax check: DATABASE_URL is not a valid sqlite+aiosqlite path.")
+        logger.error("Cannot perform direct aiosqlite syntax check: FEYOD_DATABASE_URL is not a valid sqlite+aiosqlite path.")
         # Fallback or raise error - for now, assume valid syntax if URL is wrong format for this check
         # return True, "Warning: Could not perform syntax check due to DB URL format."
         # Or attempt SQLAlchemy check here as shown above.
         # Let's raise an error for clarity.
-        raise ValueError("DATABASE_URL format not suitable for direct aiosqlite syntax check.")
+        raise ValueError("FEYOD_DATABASE_URL format not suitable for direct aiosqlite syntax check.")
 
     # Extract file path
     db_file_path = db_path[len("sqlite+aiosqlite:///"):]

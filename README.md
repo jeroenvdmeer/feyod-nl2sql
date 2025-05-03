@@ -32,16 +32,16 @@ To set up the database:
     ```
     This command creates the `feyod.db` file in the root of the `feyod` repository.
 
-4.  **Configure the `DATABASE_URL`:** Ensure the `DATABASE_URL` environment variable points to the location of this `feyod.db` file. For example, if your project using `feyod-common` is in a sibling directory to `feyod`, you might set:
+4.  **Configure the `FEYOD_DATABASE_URL`:** Ensure the `FEYOD_DATABASE_URL` environment variable points to the location of this `feyod.db` file. For example, if your project using `feyod-common` is in a sibling directory to `feyod`, you might set:
     ```dotenv
-    DATABASE_URL="sqlite+aiosqlite:///../feyod/feyod.db"
+    FEYOD_DATABASE_URL="sqlite+aiosqlite:///../feyod/feyod.db"
     ```
 
 ## Configuration
 
 Before using the components in this package, ensure the necessary environment variables are set. These variables configure aspects like database connections and LLM providers/API keys. Refer to `config.py` for a detailed list of required and optional environment variables. Common variables include:
 
-*   `DATABASE_URL`: The connection string for the database (e.g., `sqlite+aiosqlite:///./feyod.db`). **See Database Setup section.**
+*   `FEYOD_DATABASE_URL`: The connection string for the database (e.g., `sqlite+aiosqlite:///./feyod.db`). **See Database Setup section.**
 *   `LLM_PROVIDER`: The desired language model provider (e.g., `openai`, `google`).
 *   `LLM_API_KEY`: The API key for the selected LLM provider.
 *   `LLM_MODEL`: The specific model to use (e.g., `o4-mini`).
