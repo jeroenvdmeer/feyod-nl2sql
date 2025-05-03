@@ -112,7 +112,7 @@ def get_llm() -> Optional[BaseChatModel]:
     # Add elif for other providers' key names
 
     try:
-        logger.info(f"Initializing {provider} LLM (Model: {config.LLM_MODEL}). Args: {constructor_args}")
+        logger.info(f"Initializing {provider} LLM (Model: {config.LLM_MODEL}).")
         llm_instance = llm_class(**constructor_args)
         logger.info(f"LLM initialized successfully for provider: {provider}")
         return llm_instance
@@ -159,7 +159,7 @@ def get_embeddings() -> Optional[BaseEmbeddings]:
     # Add elif for other providers' key names
 
     try:
-        logger.info(f"Initializing {provider} Embeddings. Args: {constructor_args}")
+        logger.info(f"Initializing {provider} Embeddings")
         embeddings_instance = embeddings_class(**constructor_args)
         logger.info(f"Embeddings initialized successfully for provider: {provider}")
         return embeddings_instance
