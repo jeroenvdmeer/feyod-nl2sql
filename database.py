@@ -1,7 +1,8 @@
 """Database connection and interaction logic using SQLAlchemy for async SQLite."""
 
 import logging
-from typing import List, Dict, Any, Optional
+import json
+from typing import Dict, Optional
 import sqlalchemy.exc
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from sqlalchemy import text
@@ -39,7 +40,7 @@ async def get_db_connection() -> AsyncConnection:
     except sqlalchemy.exc.SQLAlchemyError as e:
         logger.error(f"Error connecting to database: {e}")
         raise
-    except Exception as e: # Catch other potential errors like invalid URL format during connect
+    except Exception as e:
         logger.error(f"Unexpected error getting database connection: {e}")
         raise ValueError(f"Failed to connect to database: {e}")
 
@@ -61,8 +62,6 @@ async def get_schema_description() -> str:
     conn: Optional[AsyncConnection] = None
     try:
         conn = await get_db_connection()
-        # Use SQLAlchemy's reflection/introspection capabilities if needed for more complex scenarios
-        # For SQLite, PRAGMA statements are often sufficient and simpler.
 
         # Get table names
         result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
@@ -76,7 +75,7 @@ async def get_schema_description() -> str:
             schema_parts.append(f"Table '{table_name}':")
 
             # Get column details for each table
-            col_result = await conn.execute(text(f"PRAGMA table_info('{table_name}');")) # Use quotes for safety
+            col_result = await conn.execute(text(f"PRAGMA table_info('{table_name}');"))
             columns = col_result.fetchall()
             for column in columns:
                 # PRAGMA table_info columns: cid, name, type, notnull, dflt_value, pk
@@ -84,7 +83,7 @@ async def get_schema_description() -> str:
                 col_type = column[2]
                 col_pk = " (Primary Key)" if column[5] else ""
                 schema_parts.append(f"  - {col_name}: {col_type}{col_pk}")
-            schema_parts.append("") # Add a blank line between tables
+            schema_parts.append("")
 
         return "\n".join(schema_parts)
 
@@ -98,41 +97,33 @@ async def get_schema_description() -> str:
         await close_db_connection(conn)
 
 
-async def execute_query(sql: str, params: Optional[Dict | tuple] = None) -> List[Dict[str, Any]]:
+async def execute_query(sql: str, params: Optional[Dict | tuple] = None) -> str:
     """Executes a given SQL query safely with parameters and returns results as dicts."""
     conn: Optional[AsyncConnection] = None
-    results: List[Dict[str, Any]] = []
+    results: str = None
+
     if params is None:
         params = {} # Use empty dict for execute if no params provided
 
     try:
         conn = await get_db_connection()
         logger.info(f"Executing SQL: {sql} with params: {params}")
-        # Use text() for literal SQL; ensure parameters are passed correctly
         query = text(sql)
         result_proxy = await conn.execute(query, params)
 
-        # Check if the query returns rows (e.g., SELECT)
+        # Check if the query returns rows
         if result_proxy.returns_rows:
             # Fetch all rows and convert them to dictionaries
-            rows = result_proxy.mappings().fetchall() # .mappings() gives dict-like objects
-            results = [dict(row) for row in rows]
-            logger.info(f"Query executed successfully. Fetched {len(results)} rows.")
-        else:
-            # For non-SELECT statements (though we aim to only allow SELECTs)
-            logger.info(f"Query executed successfully. Rows affected: {result_proxy.rowcount}")
-            # For INSERT/UPDATE/DELETE, you might want conn.commit() if autocommit isn't enabled
-            # await conn.commit() # Typically needed if not using autocommit
-
-        # Consider adding commit for safety, though SELECTs don't need it and autocommit might be default
-        # await conn.commit()
+            rows = result_proxy.mappings().fetchall()
+            results = json.dumps([dict(row) for row in rows])
+            logger.info(f"Query executed successfully: '{results}'")
 
     except sqlalchemy.exc.SQLAlchemyError as e:
-        logger.error(f"SQLAlchemy error executing query '{sql}' with params {params}: {e}")
+        logger.error(f"SQLAlchemy error executing query: {e}")
         # Propagate a clear error message
         raise ValueError(f"Error executing query: {e}")
     except Exception as e:
-        logger.exception(f"Unexpected error executing query '{sql}': {e}")
+        logger.exception(f"Unexpected error executing query: {e}")
         raise ValueError(f"Unexpected error executing query: {e}")
     finally:
         await close_db_connection(conn)
@@ -169,16 +160,11 @@ async def _test_main():
     try:
         # Example using named parameters (dictionary)
         clubs = await execute_query("SELECT clubId, clubName FROM clubs LIMIT :limit;", {"limit": 5})
-        # Example using positional parameters (tuple) - less common with SQLAlchemy text()
-        # clubs = await execute_query("SELECT clubId, clubName FROM clubs LIMIT ?;", (5,)) # Check DB driver support
         print(clubs)
     except Exception as e:
         print(f"Query failed: {e}")
 
 if __name__ == "__main__":
     import asyncio
-    # Note: Running this directly might require setting env vars beforehand
-    # or modifying config loading for testing.
     print("Running database test function. Ensure FEYOD_DATABASE_URL is set in your environment.")
     asyncio.run(_test_main())
-
