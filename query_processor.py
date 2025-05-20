@@ -1,27 +1,19 @@
 """Handles the core logic for SQL generation, checking, and fixing."""
 
 import logging
-import aiosqlite # Keep for check_sql_syntax if not using SQLAlchemy's check
+import aiosqlite
 from typing import Tuple, Optional
 
-# LangChain imports
-try:
-    from langchain_core.prompts import ChatPromptTemplate
-    from langchain_core.runnables import Runnable
-    from langchain_core.language_models.chat_models import BaseChatModel
-    from langchain_core.output_parsers.string import StrOutputParser
-except ImportError:
-    logging.warning("langchain_core not found, falling back to older langchain imports.")
-    from langchain.prompts import ChatPromptTemplate # type: ignore
-    from langchain.schema.runnable import Runnable # type: ignore
-    from langchain.chat_models.base import BaseChatModel # type: ignore
-    from langchain.schema import StrOutputParser # type: ignore
-
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.output_parsers.string import StrOutputParser
+from langchain_core.messages import AnyMessage
 
 # Local imports (relative)
 from . import database
 from .llm_factory import get_llm
-from .examples import get_few_shot_prompt_template # Import the prompt template getter
+from .examples import get_few_shot_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +27,7 @@ You are an expert SQLite assistant with strong attention to detail. Given the qu
 - The input question is likely from the perspective of a fan of the football club Feyenoord. Use this knowledge when generating a query. For example, when data about a football match is requested and only an opponent is mentioned, assume that the other club is Feyenoord.
 - When a club name is referenced, do not just use the columns homeClubName and awayClubName in the WHERE statement. Be smart, and also query the clubName column in the clubs table using the clubId. Additionally, take into account that a typo can have been made in the club name, so make the query flexible (e.g., using LIKE or checking variations if appropriate, but prioritize joining with the `clubs` table via `clubId`).
 - When dates are mentioned in the question, remember to use the `strftime` function for comparisons if the database stores dates as text or numbers in a specific format. Assume dates are stored in 'YYYY-MM-DD HH:MM:SS' format unless schema indicates otherwise.
+- You have access to the full conversation history, which may include previous questions, SQL queries, and answers. Use this context to refine your SQL query. If the user's question is similar or related to a previous question, you can reuse the SQL query from that context.'
 
 **Query Structure & Best Practices:**
 - Unless the user specifies a specific number of examples they wish to obtain, always limit your query to at most 5 results. You can order the results by a relevant column to return the most interesting examples in the database.
@@ -101,7 +94,7 @@ def _build_sql_generation_chain() -> Optional[Runnable]:
         logger.warning("Few-shot examples not available, SQL generation prompt will not include them.")
 
     # Add the final human message template
-    prompt_messages.append(("human", "=== Question:\n{natural_language_query}\n=== Schemas:\n{schema}\n=== Resulting query:"))
+    prompt_messages.append(("human", "=== Question:\n{natural_language_query}\n=== Full conversation:\n{full_conversation}\n=== Schemas:\n{schema}\n=== Resulting query:"))
 
     prompt_template = ChatPromptTemplate.from_messages(prompt_messages)
 
@@ -125,10 +118,25 @@ def _build_sql_fixing_chain() -> Optional[Runnable]:
     chain = prompt_template | llm | StrOutputParser()
     return chain
 
+def format_conversation_for_llm(messages: list[object]) -> str:
+    """Format a list of AnyMessage objects for LLM consumption."""
+    formatted = []
+    for msg in messages:
+        # Try to support both LangChain and generic dict-like messages
+        msg_type = getattr(msg, 'type', None) or msg.get('type', None)
+        content = getattr(msg, 'content', None) or msg.get('content', None)
+        if msg_type == 'HumanMessage':
+            formatted.append(f"- Human: {content}")
+        elif msg_type == 'AIMessage':
+            formatted.append(f"- AI: {content}")
+        else:
+            # Fallback for unknown types
+            formatted.append(f"- {msg_type or 'Unknown'}: {content}")
+    return "\n".join(formatted)
 
 # --- Core Functions ---
 
-async def generate_sql_from_nl(natural_language_query: str, schema: str) -> str:
+async def generate_sql_from_nl(natural_language_query: str, schema: str, messages: list[AnyMessage]) -> str:
     """Converts natural language query to SQL using the generation chain."""
     sql_generation_chain = _build_sql_generation_chain()
     if not sql_generation_chain:
@@ -137,9 +145,12 @@ async def generate_sql_from_nl(natural_language_query: str, schema: str) -> str:
     logger.info(f"Generating SQL for: {natural_language_query}")
     try:
         # Invoke the chain asynchronously
+        formatted_conversation = format_conversation_for_llm(messages)
+        logger.info(f"Formatted conversation for LLM: {formatted_conversation}")
         sql_query = await sql_generation_chain.ainvoke({
             "schema": schema,
-            "natural_language_query": natural_language_query
+            "natural_language_query": natural_language_query,
+            "full_conversation": formatted_conversation
         })
 
         # Basic cleanup (LLM should follow instructions, but just in case)

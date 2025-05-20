@@ -27,6 +27,10 @@ EXAMPLE_DB_CONNECTION_STRING = os.getenv("EXAMPLE_DB_CONNECTION_STRING")
 EXAMPLE_DB_NAME = os.getenv("EXAMPLE_DB_NAME", "feyenoord_data") # Default DB name
 EXAMPLE_DB_COLLECTION = os.getenv("EXAMPLE_DB_COLLECTION", "examples") # Default collection name
 
+# Context window management (memory)
+CONTEXT_RECENT_MESSAGES_KEPT = int(os.getenv("CONTEXT_RECENT_MESSAGES_KEPT", 15))
+CONTEXT_OLDER_MESSAGES_CHAR_THRESHOLD = int(os.getenv("CONTEXT_OLDER_MESSAGES_CHAR_THRESHOLD", 3000))
+
 # Validate essential configurations
 if not LLM_API_KEY and LLM_PROVIDER != "mock": # Allow mock provider without key
     logger.warning(f"LLM_API_KEY not set for provider '{LLM_PROVIDER}'. LLM/Embeddings may fail.")
