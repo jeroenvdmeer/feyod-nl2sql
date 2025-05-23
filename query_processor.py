@@ -10,10 +10,9 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers.string import StrOutputParser
 from langchain_core.messages import AnyMessage
 
-# Local imports (relative)
-from . import database
-from .llm_factory import get_llm
-from .examples import get_few_shot_prompt_template
+from common import database
+from common.llm_factory import get_llm
+from common.examples import get_few_shot_prompt_template
 
 logger = logging.getLogger(__name__)
 

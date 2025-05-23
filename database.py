@@ -1,15 +1,14 @@
 """Database connection and interaction logic using SQLAlchemy for a sync SQLite connection."""
 
 import logging
+import asyncio
 from sqlalchemy import create_engine, text
 from concurrent.futures import ThreadPoolExecutor
-import asyncio
-
-# Import config and llm from the common module
-from . import config
-from .llm_factory import get_llm
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+
+from common import config
+from common.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
 
