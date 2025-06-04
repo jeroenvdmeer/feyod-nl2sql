@@ -9,6 +9,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper() # Default to INFO level
 
+MAX_FIX_ATTEMPTS = int(os.getenv("MAX_FIX_ATTEMPTS", 3)) # Default to 3 attempts
+
 # Database Configuration
 # Use FEYOD_DATABASE_URL for flexibility (e.g., "sqlite+aiosqlite:///path/to/db.sqlite")
 FEYOD_DATABASE_URL = os.getenv("FEYOD_DATABASE_URL")

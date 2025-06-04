@@ -164,7 +164,7 @@ async def generate_sql_from_nl(natural_language_query: str, schema: str, message
         if not sql_query or not sql_query.upper().startswith("SELECT"):
              # Log the problematic output for debugging
              logger.error(f"LLM did not return a valid SELECT query. Output: '{sql_query}'")
-             raise ValueError("Generated query is not a valid SELECT statement.")
+             raise ValueError(f"Generated query is not a valid SELECT statement: '{sql_query}'")
         return sql_query
     except Exception as e:
         logger.exception(f"Error invoking SQL generation chain: {e}")
@@ -263,4 +263,3 @@ async def attempt_fix_sql(invalid_sql: str, error_message: str, schema: str, ori
     except Exception as e:
         logger.exception(f"Error invoking SQL fixing chain: {e}")
         raise ValueError(f"Failed to fix SQL: {e}")
-
