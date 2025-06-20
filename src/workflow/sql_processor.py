@@ -10,9 +10,9 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers.string import StrOutputParser
 from langchain_core.messages import AnyMessage
 
-from common import database
-from common.llm_factory import get_llm
-from common.examples import get_few_shot_prompt_template
+from workflow import database
+from workflow.llm_factory import get_llm
+from workflow.examples import get_few_shot_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -171,45 +171,18 @@ async def generate_sql_from_nl(natural_language_query: str, schema: str, message
         raise ValueError(f"Failed to generate SQL: {e}")
 
 
-async def check_sql_syntax(sql_query: str) -> Tuple[bool, Optional[str]]:
+async def check_sql_syntax(sql_query: str, db_url: str) -> Tuple[bool, Optional[str]]:
     """
     Checks the syntax of an SQLite query using EXPLAIN.
     Returns (True, None) on success, (False, error_message) on failure.
-    Uses a direct aiosqlite connection for this specific check, as it's simple
-    and avoids potential complexities of checking via SQLAlchemy engine for just EXPLAIN.
-    Requires FEYOD_DATABASE_URL to be a file path for aiosqlite.
-    If FEYOD_DATABASE_URL is not a file path, this needs adjustment or use SQLAlchemy execute.
     """
-    # Alternative: Use SQLAlchemy connection if FEYOD_DATABASE_URL isn't a direct file path
-    # conn = None
-    # try:
-    #     conn = await database.get_db_connection()
-    #     await conn.execute(text(f"EXPLAIN {sql_query}")) # Use text() with SQLAlchemy
-    #     logger.info(f"SQL syntax check passed for: {sql_query}")
-    #     return True, None
-    # except database.sqlalchemy.exc.SQLAlchemyError as e:
-    #     error_message = str(e)
-    #     logger.warning(f"SQL syntax check failed for query '{sql_query}': {error_message}")
-    #     return False, error_message
-    # finally:
-    #     await database.close_db_connection(conn)
+    if not db_url or not db_url.startswith("sqlite+aiosqlite:///"):
+        logger.error(f"Cannot perform syntax check: Invalid or missing db_url: {db_url}")
+        return False, "Invalid database configuration."
 
-    # --- Using direct aiosqlite (assuming file path in FEYOD_DATABASE_URL) ---
+    db_file_path = db_url[len("sqlite+aiosqlite:///"):]
     conn = None
-    db_path = database.config.FEYOD_DATABASE_URL
-    if not db_path or not db_path.startswith("sqlite+aiosqlite:///"):
-        logger.error("Cannot perform direct aiosqlite syntax check: FEYOD_DATABASE_URL is not a valid sqlite+aiosqlite path.")
-        # Fallback or raise error - for now, assume valid syntax if URL is wrong format for this check
-        # return True, "Warning: Could not perform syntax check due to DB URL format."
-        # Or attempt SQLAlchemy check here as shown above.
-        # Let's raise an error for clarity.
-        raise ValueError("FEYOD_DATABASE_URL format not suitable for direct aiosqlite syntax check.")
-
-    # Extract file path
-    db_file_path = db_path[len("sqlite+aiosqlite:///"):]
-
     try:
-        # Use a temporary connection just for the syntax check
         conn = await aiosqlite.connect(db_file_path)
         await conn.execute(f"EXPLAIN {sql_query}")
         logger.info(f"SQL syntax check passed for: {sql_query}")
@@ -218,16 +191,12 @@ async def check_sql_syntax(sql_query: str) -> Tuple[bool, Optional[str]]:
         error_message = str(e)
         logger.warning(f"SQL syntax check failed for query '{sql_query}': {error_message}")
         return False, error_message
-    except FileNotFoundError:
-        logger.error(f"Database file not found at {db_file_path} for syntax check.")
-        return False, f"Database file not found at {db_file_path}"
     except Exception as e:
         logger.exception(f"Unexpected error during SQL syntax check: {e}")
         return False, f"Unexpected error during syntax check: {e}"
     finally:
         if conn:
             await conn.close()
-    # --- End aiosqlite section ---
 
 
 async def attempt_fix_sql(invalid_sql: str, error_message: str, schema: str, original_nl_query: str) -> str:

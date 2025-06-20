@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "feyod-nl2sql"
+version = "0.1.0"
+authors = [
+    { name="Jeroen van der Meer", email="jeroen@feyod.nl" },
+]
+description = "A comprehensive NL2SQL workflow for Feyenoord data, powered by LangGraph."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "langchain>=0.1.16",
+    "langchain-community>=0.0.32",
+    "langchain-core>=0.1.42",
+    "langchain-openai>=0.1.1",
+    "langgraph>=0.0.38",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "pydantic>=2.6.4",
+    "aiohttp>=3.9.3",
+    "aiosqlite>=0.19.0",
+    "sqlalchemy>=2.0.29",
+    "python-dotenv>=1.0.1",
+    "pytest>=8.1.1",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/jeroenvdmeer/feyod-nl2sql"
+"Bug Tracker" = "https://github.com/jeroenvdmeer/feyod-nl2sql/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"] 

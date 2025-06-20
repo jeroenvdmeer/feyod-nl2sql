@@ -1,86 +1,64 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
 import os
+from unittest.mock import MagicMock
+from sqlalchemy import create_engine, text
 
-# Set env var before importing config and database
-# In a real scenario, use pytest-dotenv or fixtures to manage this
-os.environ['FEYOD_DATABASE_URL'] = 'sqlite+aiosqlite:///./test_db.sqlite'
+from feyod_nl2sql.workflow import database
 
-# Now import the modules under test
-from .. import database
-from .. import config
+TEST_DB_URL = 'sqlite+aiosqlite:///./test_feyod.sqlite'
 
-# Ensure the test database file is cleaned up
-@pytest.fixture(scope="module", autouse=True)
-def cleanup_db():
+@pytest.fixture(scope="module")
+def setup_test_db():
+    """Set up a test database and clean it up after tests."""
+    sync_db_url = TEST_DB_URL.replace('+aiosqlite', '')
+    engine = create_engine(sync_db_url)
+    with engine.connect() as conn:
+        conn.execute(text("CREATE TABLE IF NOT EXISTS clubs (clubId INTEGER PRIMARY KEY, clubName TEXT)"))
+        conn.execute(text("INSERT INTO clubs (clubId, clubName) VALUES (1, 'Feyenoord')"))
+        conn.execute(text("COMMIT"))
+    
     yield
-    db_path = config.FEYOD_DATABASE_URL[len('sqlite+aiosqlite:///'):]
+    
+    db_path = TEST_DB_URL.replace('sqlite+aiosqlite:///', '')
     if os.path.exists(db_path):
         os.remove(db_path)
 
-@pytest_asyncio.fixture
-async def db_conn():
-    # Ensure engine is created for the test DB
-    engine = database.get_engine()
-    # Create a dummy table for testing schema/query execution
-    async with engine.begin() as conn:
-        await conn.run_sync(
-            lambda sync_conn: sync_conn.execute(
-                "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)"
-            )
-        )
-        await conn.run_sync(
-             lambda sync_conn: sync_conn.execute(
-                "INSERT INTO test_table (id, name) VALUES (1, 'test_item') ON CONFLICT(id) DO NOTHING"
-             )
-        )
-
-    # Get a connection for the test function
-    conn = await database.get_db_connection()
-    yield conn
-    await database.close_db_connection(conn)
-    # Optional: Dispose engine after tests if needed, though usually not required per function
-    # await engine.dispose()
-
+@pytest.mark.asyncio
+async def test_get_schema_description(setup_test_db):
+    """Test that the schema description can be retrieved correctly."""
+    # Mock the LLM as it's a dependency for the toolkit
+    mock_llm = MagicMock()
+    
+    schema = await database.get_schema_description(db_url=TEST_DB_URL, llm=mock_llm)
+    
+    assert "clubs" in schema
+    assert "clubId" in schema
+    assert "clubName" in schema
 
 @pytest.mark.asyncio
-async def test_get_db_connection(db_conn):
-    assert db_conn is not None
-    assert hasattr(db_conn, 'execute') # Check if it looks like a connection object
-
-@pytest.mark.asyncio
-async def test_get_schema_description(db_conn):
-    # We created 'test_table' in the fixture
-    schema = await database.get_schema_description()
-    assert "Table 'test_table':" in schema
-    assert "- id: INTEGER (Primary Key)" in schema
-    assert "- name: TEXT" in schema
-
-@pytest.mark.asyncio
-async def test_execute_query_select(db_conn):
-    results = await database.execute_query("SELECT id, name FROM test_table WHERE id = :id", {"id": 1})
+async def test_execute_query(setup_test_db):
+    """Test that a valid query can be executed."""
+    results = await database.execute_query("SELECT clubName FROM clubs WHERE clubId = 1", db_url=TEST_DB_URL)
     assert len(results) == 1
-    assert results[0]['id'] == 1
-    assert results[0]['name'] == 'test_item'
+    assert results[0]['clubName'] == 'Feyenoord'
 
 @pytest.mark.asyncio
-async def test_execute_query_no_results(db_conn):
-    results = await database.execute_query("SELECT id, name FROM test_table WHERE id = :id", {"id": 99})
+async def test_execute_query_no_results(setup_test_db):
+    """Test that a query with no results returns an empty list."""
+    results = await database.execute_query("SELECT clubName FROM clubs WHERE clubId = 99", db_url=TEST_DB_URL)
     assert len(results) == 0
 
 @pytest.mark.asyncio
-async def test_execute_query_invalid_sql(db_conn):
-    with pytest.raises(ValueError, match="Error executing query"):
-        await database.execute_query("SELECT * FROM non_existent_table")
+async def test_execute_query_invalid_sql(setup_test_db):
+    """Test that an invalid query raises a ValueError."""
+    with pytest.raises(ValueError, match="Query execution failed"):
+        await database.execute_query("SELECT * FROM non_existent_table", db_url=TEST_DB_URL)
 
-# Test connection failure (more complex to mock engine/connect reliably)
-# @pytest.mark.asyncio
-# async def test_get_db_connection_failure():
-#     with patch('common.database.create_async_engine', side_effect=Exception("Connection Refused")):
-#         with pytest.raises(ValueError, match="Failed to connect to database"):
-#              # Need to reset the global _engine or mock get_engine behavior
-#              database._engine = None # Reset engine for this test
-#              await database.get_db_connection()
-#              database._engine = None # Clean up after
+@pytest.mark.asyncio
+async def test_get_distinct_values(setup_test_db):
+    """Test retrieving distinct values from a column."""
+    club_names = await database.get_distinct_values("clubName", "clubs", db_url=TEST_DB_URL)
+    assert isinstance(club_names, list)
+    assert "Feyenoord" in club_names
 
