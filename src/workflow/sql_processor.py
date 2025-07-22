@@ -161,10 +161,6 @@ async def generate_sql_from_nl(natural_language_query: str, schema: str, message
         sql_query = sql_query.strip().replace('\n', ' ') # Remove escaped newlines
 
         logger.info(f"Generated SQL: {sql_query}")
-        if not sql_query or not sql_query.upper().startswith("SELECT"):
-             # Log the problematic output for debugging
-             logger.error(f"LLM did not return a valid SELECT query. Output: '{sql_query}'")
-             raise ValueError(f"Generated query is not a valid SELECT statement: '{sql_query}'")
         return sql_query
     except Exception as e:
         logger.exception(f"Error invoking SQL generation chain: {e}")
