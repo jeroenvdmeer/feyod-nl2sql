@@ -29,14 +29,14 @@ if not FEYOD_DATABASE_URL:
 
 # --- LLM Configuration ---
 # For clarity, we can allow specific keys or a general one.
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+LLM_API_KEY = os.getenv("LLM_API_KEY")
 
-if not OPENAI_API_KEY:
-    logger.warning("OPENAI_API_KEY environment variable is not set. LLM calls will fail.")
+if not LLM_API_KEY:
+    logger.warning("LLM_API_KEY environment variable is not set. LLM calls will fail.")
 
 # LLM Configuration
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "google").lower() # Default to openai
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash-preview-04-17") # Default model
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5") # Default model
 
 # Example Loading Configuration
 EXAMPLE_SOURCE = os.getenv("EXAMPLE_SOURCE", "local").lower() # "local" or "mongodb"

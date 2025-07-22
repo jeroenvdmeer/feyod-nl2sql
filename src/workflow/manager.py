@@ -5,13 +5,13 @@ from datetime import datetime
 import re
 from typing import Dict, Any, Optional
 
-from langgraph.graph import StateGraph, START, END, CompiledGraph
+from langgraph.graph import StateGraph, START, END
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import AIMessage
 
 from .state import AgentState, find_last_message_by_name, find_last_human_message
-from .database import get_schema_description, execute_query
-from .sql_processor import generate_sql_from_nl, check_sql_syntax, attempt_fix_sql
+from .database import get_schema_description, execute_query, check_sql_syntax
+from .sql_processor import generate_sql_from_nl, attempt_fix_sql
 from .utils.entity_resolution import find_ambiguous_entities, resolve_entities
 from .llm_factory import get_llm
 from .utils.memory_utils import _prepare_llm_context
@@ -44,11 +44,10 @@ class WorkflowManager:
         self.max_sql_fix_attempts = self.config.get(
             "MAX_SQL_FIX_ATTEMPTS", getattr(config_module, "MAX_SQL_FIX_ATTEMPTS", 1)
         )
-        self.llm = get_llm(self.config.get("OPENAI_API_KEY"))
-        
+        self.llm = get_llm()
         self.graph = self._compile_graph()
 
-    def get_graph(self) -> CompiledGraph:
+    def get_graph(self):
         return self.graph
 
     def _canonicalize_query(self, user_query: str, resolved_entities: dict) -> str:
@@ -65,7 +64,8 @@ class WorkflowManager:
         if not state.get("schema"):
             try:
                 db_url = self.config.get("FEYOD_DATABASE_URL", getattr(config_module, "FEYOD_DATABASE_URL", None))
-                schema = await get_schema_description(db_url)
+                logger.info(f"DATABASE URL: '{db_url}'")
+                schema = await get_schema_description(db_url, self.llm)
                 if not schema or "Error" in schema:
                     raise ValueError(f"Failed to retrieve schema: {schema}")
                 return {
@@ -245,6 +245,6 @@ class WorkflowManager:
         workflow.add_edge("error_handler", END)
         return workflow
 
-    def _compile_graph(self) -> CompiledGraph:
+    def _compile_graph(self):
         logger.info("Compiling the workflow graph.")
         return self._create_workflow().compile() 

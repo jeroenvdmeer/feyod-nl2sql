@@ -10,9 +10,9 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers.string import StrOutputParser
 from langchain_core.messages import AnyMessage
 
-from workflow import database
-from workflow.llm_factory import get_llm
-from workflow.examples import get_few_shot_prompt_template
+from . import database
+from .llm_factory import get_llm
+from .examples import get_few_shot_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -169,34 +169,6 @@ async def generate_sql_from_nl(natural_language_query: str, schema: str, message
     except Exception as e:
         logger.exception(f"Error invoking SQL generation chain: {e}")
         raise ValueError(f"Failed to generate SQL: {e}")
-
-
-async def check_sql_syntax(sql_query: str, db_url: str) -> Tuple[bool, Optional[str]]:
-    """
-    Checks the syntax of an SQLite query using EXPLAIN.
-    Returns (True, None) on success, (False, error_message) on failure.
-    """
-    if not db_url or not db_url.startswith("sqlite+aiosqlite:///"):
-        logger.error(f"Cannot perform syntax check: Invalid or missing db_url: {db_url}")
-        return False, "Invalid database configuration."
-
-    db_file_path = db_url[len("sqlite+aiosqlite:///"):]
-    conn = None
-    try:
-        conn = await aiosqlite.connect(db_file_path)
-        await conn.execute(f"EXPLAIN {sql_query}")
-        logger.info(f"SQL syntax check passed for: {sql_query}")
-        return True, None
-    except aiosqlite.Error as e:
-        error_message = str(e)
-        logger.warning(f"SQL syntax check failed for query '{sql_query}': {error_message}")
-        return False, error_message
-    except Exception as e:
-        logger.exception(f"Unexpected error during SQL syntax check: {e}")
-        return False, f"Unexpected error during syntax check: {e}"
-    finally:
-        if conn:
-            await conn.close()
 
 
 async def attempt_fix_sql(invalid_sql: str, error_message: str, schema: str, original_nl_query: str) -> str:

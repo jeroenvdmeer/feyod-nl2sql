@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, AsyncMock
 
 from feyod_nl2sql.workflow import sql_processor
+from nl2sql.src.workflow import database
 
 TEST_DB_URL = 'sqlite+aiosqlite:///./test_feyod_sql.sqlite'
 
@@ -45,7 +46,7 @@ async def test_check_sql_syntax_valid(mock_connect):
     mock_conn = AsyncMock()
     mock_connect.return_value = mock_conn
     
-    is_valid, error = await sql_processor.check_sql_syntax("SELECT * FROM test", TEST_DB_URL)
+    is_valid, error = await database.check_sql_syntax("SELECT * FROM test", TEST_DB_URL)
     
     assert is_valid is True
     assert error is None
@@ -58,7 +59,7 @@ async def test_check_sql_syntax_invalid(mock_connect):
     mock_conn.execute.side_effect = Exception("Syntax Error")
     mock_connect.return_value = mock_conn
 
-    is_valid, error = await sql_processor.check_sql_syntax("SELEC * FROOM test", TEST_DB_URL)
+    is_valid, error = await database.check_sql_syntax("SELEC * FROOM test", TEST_DB_URL)
     
     assert is_valid is False
     assert "Syntax Error" in error

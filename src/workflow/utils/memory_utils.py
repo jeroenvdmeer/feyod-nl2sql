@@ -1,8 +1,8 @@
 import logging
 from typing import List, Any
 from langchain_core.messages import BaseMessage, SystemMessage
-from common.llm_factory import get_llm
-from common.config import CONTEXT_RECENT_MESSAGES_KEPT, CONTEXT_OLDER_MESSAGES_CHAR_THRESHOLD
+from ..llm_factory import get_llm
+from ..config import CONTEXT_RECENT_MESSAGES_KEPT, CONTEXT_OLDER_MESSAGES_CHAR_THRESHOLD
 
 logger = logging.getLogger(__name__)
 

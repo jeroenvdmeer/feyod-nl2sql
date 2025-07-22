@@ -2,9 +2,8 @@
 
 import logging
 import asyncio
-from typing import Optional, List
+from typing import List
 from sqlalchemy import create_engine, text, Engine
-from sqlalchemy.orm import sessionmaker, Session
 from concurrent.futures import ThreadPoolExecutor
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
@@ -100,13 +99,33 @@ async def get_distinct_values(column_name: str, table_name: str, db_url: str) ->
         logger.error(f"Error fetching distinct values for {column_name} from {table_name}: {e}")
         return []
 
+async def check_sql_syntax(sql_query: str, db_url: str) -> tuple[bool, str | None]:
+    """
+    Checks the syntax of an SQLite query using EXPLAIN via SQLAlchemy engine.
+    Returns (True, None) on success, (False, error_message) on failure.
+    """
+    loop = asyncio.get_running_loop()
+    try:
+        engine = get_engine(db_url)
+        def run_explain():
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(f"EXPLAIN {sql_query}"))
+                return True, None
+            except Exception as e:
+                logger.warning(f"SQL syntax check failed for query '{sql_query}': {e}")
+                return False, str(e)
+        is_valid, error = await loop.run_in_executor(_executor, run_explain)
+        if is_valid:
+            logger.info(f"SQL syntax check passed for: {sql_query}")
+        return is_valid, error
+    except Exception as e:
+        logger.exception(f"Unexpected error during SQL syntax check: {e}")
+        return False, f"Unexpected error during syntax check: {e}"
+
 # Example usage (for testing purposes) - Requires running in an async context
 async def _test_main():
     logging.basicConfig(level=logging.INFO)
-    # Set FEYOD_DATABASE_URL environment variable before running for this test
-    if not config.FEYOD_DATABASE_URL:
-        print("Please set the FEYOD_DATABASE_URL environment variable to run the test.")
-        return
 
     print("Testing SQLDatabase connection...")
     try:

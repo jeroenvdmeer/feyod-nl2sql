@@ -2,7 +2,8 @@ import re
 import unicodedata
 import logging
 from typing import List
-from common.database import get_distinct_player_names, get_distinct_club_names
+from ..database import get_distinct_values
+from .. import config
 from rapidfuzz import process, fuzz
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,8 @@ async def find_ambiguous_entities(user_query: str) -> List[str]:
     Returns a list of ambiguous or unmatched player/club names in the user query.
     If a close match is found, logs and returns the canonical name.
     """
-    player_names = await get_distinct_player_names()
-    club_names = await get_distinct_club_names()
+    player_names = await get_distinct_values("playerName", "players", config.FEYOD_DATABASE_URL)
+    club_names = await get_distinct_values("clubName", "clubs", config.FEYOD_DATABASE_URL)
     all_names = set(player_names) | set(club_names)
     norm_name_map = {normalize_name(n): n for n in all_names}
     candidates = extract_entity_candidates(user_query, all_names)
@@ -79,8 +80,8 @@ async def resolve_entities(user_query: str) -> dict[str, str]:
     """
     Returns a mapping of detected entity mentions in the user query to their canonical database names.
     """
-    player_names = await get_distinct_player_names()
-    club_names = await get_distinct_club_names()
+    player_names = await get_distinct_values("playerName", "players", config.FEYOD_DATABASE_URL)
+    club_names = await get_distinct_values("clubName", "clubs", config.FEYOD_DATABASE_URL)
     all_names = set(player_names) | set(club_names)
     norm_name_map = {normalize_name(n): n for n in all_names}
     candidates = extract_entity_candidates(user_query, all_names)
