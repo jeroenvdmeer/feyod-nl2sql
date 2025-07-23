@@ -37,13 +37,10 @@ FORMAT_ERROR_PROMPT = FORMAT_ANSWER_BASE_PROMPT + """
 """
 
 class WorkflowManager:
-    def __init__(self, config: Optional[Dict[str, Any]] = None, format_output: bool = True):
-        self.config = config or {}
+    def __init__(self, format_output: bool = True):
         self.format_output = format_output
         
-        self.max_sql_fix_attempts = self.config.get(
-            "MAX_SQL_FIX_ATTEMPTS", getattr(config_module, "MAX_SQL_FIX_ATTEMPTS", 1)
-        )
+        self.max_sql_fix_attempts = getattr(config_module, "MAX_SQL_FIX_ATTEMPTS", 1)
         self.llm = get_llm()
         self.graph = self._compile_graph()
 
@@ -63,7 +60,7 @@ class WorkflowManager:
         logger.info("Node: Getting schema")
         if not state.get("schema"):
             try:
-                db_url = self.config.get("FEYOD_DATABASE_URL", getattr(config_module, "FEYOD_DATABASE_URL", None))
+                db_url = getattr(config_module, "FEYOD_DATABASE_URL", None)
                 logger.info(f"DATABASE URL: '{db_url}'")
                 schema = await get_schema_description(db_url, self.llm)
                 if not schema or "Error" in schema:
@@ -120,7 +117,7 @@ class WorkflowManager:
             return {"messages": [AIMessage(content="No SQL query found to check.", name="error")]}
         
         try:
-            db_url = self.config.get("FEYOD_DATABASE_URL", getattr(config_module, "FEYOD_DATABASE_URL", None))
+            db_url = getattr(config_module, "FEYOD_DATABASE_URL", None)
             is_valid, error = await check_sql_syntax(sql_msg.content, db_url)
             if is_valid:
                 return {"messages": [AIMessage(content="Syntax check OK", name="check_result")]}
@@ -136,7 +133,7 @@ class WorkflowManager:
             return {"messages": [AIMessage(content="No SQL query found to execute.", name="error")]}
             
         try:
-            db_url = self.config.get("FEYOD_DATABASE_URL", getattr(config_module, "FEYOD_DATABASE_URL", None))
+            db_url = getattr(config_module, "FEYOD_DATABASE_URL", None)
             results = await execute_query(sql_msg.content, db_url)
             return {"messages": [AIMessage(content=json.dumps(results), name="results")]}
         except Exception as e:
